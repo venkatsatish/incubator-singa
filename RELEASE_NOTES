@@ -1,0 +1,177 @@
+Release Notes - SINGA - Version singa-incubating-0.3.0
+
+SINGA is a general distributed deep learning platform for training big deep learning models over large datasets.
+
+This release includes following features:
+
+  * GPU Support
+    * [SINGA-131] Implement and optimize hybrid training using both CPU and GPU
+    * [SINGA-136] Support cuDNN v4
+    * [SINGA-134] Extend SINGA to run over a GPU cluster
+    * [Singa-157] Change the priority of cudnn library and install libsingagpu.so
+
+  * Remove Dependencies
+    * [SINGA-156] Remove the dependency on ZMQ for single process training
+    * [SINGA-155] Remove zookeeper for single-process training
+
+  * Python Binding
+    * [SINGA-126] Python Binding for Interactive Training
+
+  * Other Improvements
+    * [SINGA-80] New Blob Level and Address Level Math Operation Interface
+    * [SINGA-130] Data Prefetching
+    * [SINGA-145] New SGD based optimization Updaters: AdaDelta, Adam, AdamMax
+
+  * Bugs Fixed
+    * [SINGA-148] Race condition between Worker threads and Driver
+    * [SINGA-150] Mesos Docker container failed
+    * [SIGNA-141] Undesired Hash collision when locating process id to worker…
+    * [SINGA-149] Docker build fail
+    * [Singa-143] The compilation cannot detect libsingagpu.so file
+
+
+-----------------------------------------
+Release Notes - SINGA - Version singa-incubating-0.2.0
+
+SINGA is a general distributed deep learning platform for training big deep learning models over large datasets. It is
+designed with an intuitive programming model based on the layer abstraction. SINGA supports a wide variety of popular
+deep learning models.
+
+This release includes following features:
+
+  * Programming model
+    * [SINGA-80] New Blob Level and Address Level Math Operation Interface
+    * [SINGA-82] Refactor input layers using data store abstraction
+    * [SINGA-87] Replace exclude field to include field for layer configuration
+    * [SINGA-110] Add Layer member datavec_ and gradvec_
+    * [SINGA-120] Implemented GRU and BPTT (BPTTWorker)
+
+  * Neuralnet layers
+    * [SINGA-91] Add SoftmaxLayer and ArgSortLayer
+    * [SINGA-106] Add dummy layer for test purpose
+    * [SINGA-120] Implemented GRU and BPTT (GRULayer and OneHotLayer)
+
+  * GPU training support
+    * [SINGA-100] Implement layers using CUDNN for GPU training
+    * [SINGA-104] Add Context Class
+    * [SINGA-105] Update GUN make files for compiling cuda related code
+    * [SINGA-98] Add Support for AlexNet ImageNet Classification Model
+
+
+  * Model/Hybrid partition
+    * [SINGA-109] Refine bridge layers
+    * [SINGA-111] Add slice, concate and split layers
+    * [SINGA-113] Model/Hybrid Partition Support
+
+  * Python binding
+    * [SINGA-108] Add Python wrapper to singa
+
+  * Predict-only mode
+    * [SINGA-85] Add functions for extracting features and test new data
+
+  * Integrate with third-party tools
+    * [SINGA-11] Start SINGA on Apache Mesos
+    * [SINGA-78] Use Doxygen to generate documentation
+    * [SINGA-89] Add Docker support
+
+  * Unit test
+    * [SINGA-95] Add make test after building
+
+  * Other improvment
+    * [SINGA-84] Header Files Rearrange
+    * [SINGA-93] Remove the asterisk in the log tcp://169.254.12.152:*:49152
+    * [SINGA-94] Move call to google::InitGoogleLogging() from Driver::Init() to main()
+    * [SINGA-96] Add Momentum to Cifar10 Example
+    * [SINGA-101] Add ll (ls -l) command in .bashrc file when using docker
+    * [SINGA-114] Remove short logs in tmp directory
+    * [SINGA-115] Print layer debug information in the neural net graph file
+    * [SINGA-118] Make protobuf LayerType field id easy to assign
+    * [SIGNA-97] Add HDFS Store
+
+  * Bugs fixed
+    * [SINGA-85] Fix compilation errors in examples
+    * [SINGA-90] Miscellaneous trivial bug fixes
+    * [SINGA-107] Error from loading pre-trained params for training stacked RBMs
+    * [SINGA-116] Fix a bug in InnerProductLayer caused by weight matrix sharing
+
+-----------------------------------------
+
+Features included in singa-incubating-0.1.0:
+
+  * Job management
+    * [SINGA-3] Use Zookeeper to check stopping (finish) time of the system
+    * [SINGA-16] Runtime Process id Management
+    * [SINGA-25] Setup glog output path
+    * [SINGA-26] Run distributed training in a single command
+    * [SINGA-30] Enhance easy-to-use feature and support concurrent jobs
+    * [SINGA-33] Automatically launch a number of processes in the cluster
+    * [SINGA-34] Support external zookeeper service
+    * [SINGA-38] Support concurrent jobs
+    * [SINGA-39] Avoid ssh in scripts for single node environment
+    * [SINGA-43] Remove Job-related output from workspace
+    * [SINGA-56] No automatic launching of zookeeper service
+    * [SINGA-73] Refine the selection of available hosts from host list
+
+  * Installation with GNU Auto tool
+    * [SINGA-4] Refine thirdparty-dependency installation
+    * [SINGA-13] Separate intermediate files of compilation from source files
+    * [SINGA-17] Add root permission within thirdparty/install.
+    * [SINGA-27] Generate python modules for proto objects
+    * [SINGA-53] Add lmdb compiling options
+    * [SINGA-62] Remove building scrips and auxiliary files
+    * [SINGA-67] Add singatest into build targets
+
+  * Distributed training
+    * [SINGA-7] Implement shared memory Hogwild algorithm
+    * [SINGA-8] Implement distributed Hogwild
+    * [SINGA-19] Slice large Param objects for load-balance
+    * [SINGA-29] Update NeuralNet class to enable layer partition type customization
+    * [SINGA-24] Implement Downpour training framework
+    * [SINGA-32] Implement AllReduce training framework
+    * [SINGA-57] Improve Distributed Hogwild
+
+  * Training algorithms for different model categories
+    * [SINGA-9] Add Support for Restricted Boltzman Machine (RBM) model
+    * [SINGA-10] Add Support for Recurrent Neural Networks (RNN)
+
+  * Checkpoint and restore
+    * [SINGA-12] Support Checkpoint and Restore
+
+  * Unit test
+    * [SINGA-64] Add the test module for utils/common
+
+  * Programming model
+    * [SINGA-36] Refactor job configuration, driver program and scripts
+    * [SINGA-37] Enable users to set parameter sharing in model configuration
+    * [SINGA-54] Refactor job configuration to move fields in ModelProto out
+    * [SINGA-55] Refactor main.cc and singa.h
+    * [SINGA-61] Support user defined classes
+    * [SINGA-65] Add an example of writing user-defined layers
+
+  * Other features
+    * [SINGA-6] Implement thread-safe singleton
+    * [SINGA-18] Update API for displaying performance metric
+    * [SINGA-77] Integrate with Apache RAT
+
+Some bugs are fixed during the development of this release
+  * [SINGA-2] Check failed: zsock_connect
+  * [SINGA-5] Server early terminate when zookeeper singa folder is not initially empty
+  * [SINGA-15] Fixg a bug from ConnectStub function which gets stuck for connecting layer_dealer_
+  * [SINGA-22] Cannot find openblas library when it is installed in default path
+  * [SINGA-23] Libtool version mismatch error.
+  * [SINGA-28] Fix a bug from topology sort of Graph
+  * [SINGA-42] Issue when loading checkpoints
+  * [SINGA-44] A bug when reseting metric values
+  * [SINGA-46] Fix a bug in updater.cc to scale the gradients
+  * [SINGA-47] Fix a bug in data layers that leads to out-of-memory when group size is too large
+  * [SINGA-48] Fix a bug in trainer.cc that assigns the same NeuralNet instance to workers from diff groups
+  * [SINGA-49] Fix a bug in HandlePutMsg func that sets param fields to invalid values
+  * [SINGA-66] Fix bugs in Worker::RunOneBatch function and ClusterProto
+  * [SINGA-79] Fix bug in singatool that can not parse -conf flag
+
+Features planned for the next release
+  * [SINGA-11] Start SINGA using Mesos
+  * [SINGA-31] Extend Blob to support xpu (cpu or gpu)
+  * [SINGA-35] Add random number generators
+  * [SINGA-40] Support sparse Param update
+  * [SINGA-41] Support single node single GPU training

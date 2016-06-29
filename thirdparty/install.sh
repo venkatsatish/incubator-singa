@@ -263,8 +263,8 @@ function install_protobuf()
 		elif [ $# == 0 ]
 		then
 			echo "install protobuf in default path";
-			./configure;
-			make && sudo make install;
+			#./configure;
+			#make && sudo make install;
 			#cd python;
 			#python setup.py build;
 			#sudo python setup.py install;

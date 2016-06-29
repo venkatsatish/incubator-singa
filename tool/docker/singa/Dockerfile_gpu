@@ -16,7 +16,23 @@
 # * limitations under the License.
 # */
 
-FROM singa/base
+#build singa from scratch
+FROM ubuntu:14.04
+MAINTAINER Anh Dinh<ug93tad@gmail.com>
+RUN rm /bin/sh && ln -s /bin/bash /bin/sh
+
+RUN apt-get update && apt-get -y install g++-4.8 build-essential git vim wget zip automake libtool man python-dev python-boto libcurl4-nss-dev libsasl2-dev maven libapr1-dev libsvn-dev openssh-server supervisor
+
+RUN cd /opt && wget --no-check-certificate --no-cookies --header "Cookie: oraclelicense=accept-securebackup-cookie"  http://download.oracle.com/otn-pub/java/jdk/8u60-b27/jdk-8u60-linux-x64.tar.gz && cd /opt && tar -zxvf jdk-8u60-linux-x64.tar.gz && rm -rf jdk-8u60-linux-x64.tar.gz
+
+COPY incubator-singa/tool/docker/singa/ssh.conf /etc/supervisor/conf.d/
+COPY incubator-singa/tool/docker/singa/.bashrc /root/.bashrc
+COPY incubator-singa/tool/docker/singa/.vimrc /root/.vimrc
+ADD incubator-singa /root/incubator-singa
+
+RUN cd && source /root/.bashrc && cd incubator-singa && ./thirdparty/install.sh all && cd thirdparty/ && wget https://github.com/google/protobuf/releases/download/v2.6.1/protobuf-2.6.1.tar.gz && tar -zxvf protobuf-2.6.1.tar.gz && cd protobuf-2.6.1 && ./configure && make clean && make && make install && cd ../../ && cp thirdparty/install.sh . && rm -rf thirdparty/* && mv install.sh thirdparty/ && ./thirdparty/install.sh zookeeper
+
+
 MAINTAINER NVIDIA CORPORATION <digits@nvidia.com>
 
 LABEL com.nvidia.volumes.needed="nvidia_driver"
@@ -65,10 +81,10 @@ RUN echo "/usr/local/cuda/lib" >> /etc/ld.so.conf.d/cuda.conf && \
 
 ENV CUDNN_DOWNLOAD_SUM 98679d5ec039acfd4d81b8bfdc6a6352d6439e921523ff9909d364e706275c2b
 
-RUN curl -fsSL http://developer.download.nvidia.com/compute/redist/cudnn/v3/cudnn-7.0-linux-x64-v3.0-prod.tgz -O && \
-    echo "$CUDNN_DOWNLOAD_SUM  cudnn-7.0-linux-x64-v3.0-prod.tgz" | sha256sum -c --strict - && \
-    tar -xzf cudnn-7.0-linux-x64-v3.0-prod.tgz -C /usr/local && \
-    rm cudnn-7.0-linux-x64-v3.0-prod.tgz && \
+RUN curl -fsSL http://developer.download.nvidia.com/compute/redist/cudnn/v4/cudnn-7.0-linux-x64-v4.0-prod.tgz -O && \
+    echo "$CUDNN_DOWNLOAD_SUM  cudnn-7.0-linux-x64-v4.0-prod.tgz" | sha256sum -c --strict - && \
+    tar -xzf cudnn-7.0-linux-x64-v4.0-prod.tgz -C /usr/local && \
+    rm cudnn-7.0-linux-x64-v4.0-prod.tgz && \
     ldconfig
 
 RUN echo "/usr/local/nvidia/lib" >> /etc/ld.so.conf.d/nvidia.conf && \
@@ -77,4 +93,4 @@ RUN echo "/usr/local/nvidia/lib" >> /etc/ld.so.conf.d/nvidia.conf && \
 ENV PATH /usr/local/nvidia/bin:/usr/local/cuda/bin:${PATH}
 ENV LD_LIBRARY_PATH /usr/local/nvidia/lib:/usr/local/nvidia/lib64:${LD_LIBRARY_PATH}
 
-RUN cd && source /root/.bashrc && cd incubator-singa && ./configure --enable-cuda --with-cuda=/usr/local/cuda --enable-cudnn --with-cudnn=/usr/local/cuda && make && make install
+RUN cd && source /root/.bashrc && cd incubator-singa && ./autogen.sh && ./configure --enable-cuda --with-cuda=/usr/local/cuda --enable-cudnn --with-cudnn=/usr/local/cuda --enable-dist --with-dist=/usr/local  && make && make install && cd examples/cifar10 && mv Makefile.example Makefile && make download && make create && service ssh start

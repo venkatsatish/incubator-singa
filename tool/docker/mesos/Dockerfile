@@ -17,12 +17,24 @@
 # */
 
 #build Mesos+Hadoop on top of SINGA
-FROM singa/base
-MAINTAINER Anh Dinh<ug93tad@gmail.com>
+
+FROM singa/gpu
+MAINTAINER skatta <skatta@adobe.com>
 
 COPY incubator-singa/tool/docker/mesos/.bashrc /root/.bashrc
 COPY incubator-singa/tool/docker/mesos/install.sh /opt/install.sh
 COPY incubator-singa/tool/mesos/* /root/incubator-singa/tool/mesos/
+
+RUN apt-get update && apt-get install -y \
+        tar wget git cmake  \
+        openjdk-7-jdk \
+        build-essential \
+        python-dev libcurl4-nss-dev libsasl2-dev \
+        libsasl2-modules maven libapr1-dev libsvn-dev \
+        libelf-dev \
+        autoconf automake libtool
+
+
 
 RUN cd /opt && source ./install.sh
 

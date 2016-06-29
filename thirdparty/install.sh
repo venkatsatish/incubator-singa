@@ -336,6 +336,9 @@ function install_zookeeper()
 			echo "install zookeeper in default path";
 			./configure;
 			make && sudo make install;
+		#	./configure;
+		#	make && sudo make install;
+
 		else
 			echo "wrong commands";
 	fi

@@ -38,7 +38,7 @@ RUN apt-get update && apt-get install -y \
 
 RUN cd /opt && source ./install.sh
 
-RUN apt-get -y install curl cmake libxml2 libxml2-dev uuid-dev protobuf-compiler libprotobuf-dev libgsasl7-dev libkrb5-dev libboost1.54-all-dev
+RUN apt-get -y install curl cmake libxml2 libxml2-dev uuid-dev  libgsasl7-dev libkrb5-dev libboost1.54-all-dev
 
 RUN cd /opt && source /root/.bashrc && wget -c http://www.eu.apache.org/dist/hadoop/common/hadoop-2.6.0/hadoop-2.6.0.tar.gz && tar -zxvf hadoop-2.6.0.tar.gz && git clone https://github.com/PivotalRD/libhdfs3.git && cd libhdfs3 && mkdir build && cd build && cmake ../ && make && make install
 

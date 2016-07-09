@@ -26,6 +26,7 @@ git clone https://github.com/venkatsatish/mesos.git
 #patch and install mesos
 cd /opt/mesos
 ./bootstrap
+sudo ./bootstrap
 mkdir build; cd build
 ../configure
 make

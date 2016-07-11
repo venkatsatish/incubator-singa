@@ -31,4 +31,4 @@ mkdir build; cd build
 ../configure
 make
 sudo make install
-sudo cp ../libsingagpu.so /usr/local/lib/
+sudo cp /root/incubator-singa/libsingagpu.so /usr/local/lib/

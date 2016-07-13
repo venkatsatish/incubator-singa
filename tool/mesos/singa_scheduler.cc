@@ -7,9 +7,9 @@
 * to you under the Apache License, Version 2.0 (the
 * "License"); you may not use this file except in compliance
 * with the License.  You may obtain a copy of the License at
-* 
+*
 *   http://www.apache.org/licenses/LICENSE-2.0
-* 
+*
 * Unless required by applicable law or agreed to in writing,
 * software distributed under the License is distributed on an
 * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -33,13 +33,13 @@
 #include <glog/logging.h>
 /**
  * \file singa_scheduler.cc implements a framework for managing SINGA jobs.
- *  
+ *
  * The scheduler takes a job configuration file [file] and performs the following:
- *	1. Parse the config file to determine the required resources. 
+ *	1. Parse the config file to determine the required resources.
  *	2. [Optional] Copy singa.conf to the HDFS: /singa/singa.conf.
  *			2.1. Raise error if singa.conf is NOT FOUND on HDFS
- *	3. Wait for offers from the Mesos master until enough is acquired. 
- *	4. Keep an increasing counter of job ID.  
+ *	3. Wait for offers from the Mesos master until enough is acquired.
+ *	4. Keep an increasing counter of job ID.
  *	5. Write [file] to HDFS: /singa/job_ID/job.conf
  *	6. Start the task:
  *			+ Set URI in the TaskInfo message to point to the config files on HDFS:
@@ -47,16 +47,16 @@
 							/singa/Job_ID/job.conf
  *			+ Set the executable command: singa-run.sh -conf ./job.conf
  *
- *	We assume that singa-run.sh is include in $PATH variable at all nodes. 
+ *	We assume that singa-run.sh is include in $PATH variable at all nodes.
  *	(Else, we set the executable to its full path)
  *	./job.conf is relative path pointing to the current sandbox directory created
- *	dynamically by Mesos. 
+ *	dynamically by Mesos.
  *
  *
- * Scheduling: 
+ * Scheduling:
  *	Each SINGA job requires certain resources represented by: (1) number of workers, (2) number of worker groups
  *	and (3) number of worker per process. The resources offered by Mesos contains (1) number of host, (2) number of CPUs
- *	at each host and (3) memory available at each hosts. 
+ *	at each host and (3) memory available at each hosts.
  *
  *	Our scheduler performs simply task assignment which guarantees that each process runs an entire work group,
  *	and each takes all the memory offered by the slave. We assume that each slave runs ONE process, that is the following
@@ -80,7 +80,7 @@ class SingaScheduler: public mesos::Scheduler {
  public:
     /**
      * Constructor, used when [sing_conf] is not given. Raise error if /singa/singa.conf is not found
-     * on HDFS. 
+     * on HDFS.
      *
      * @param namenode	address of HDFS namenode
      * @param job_conf_file	job configuration file
@@ -98,7 +98,7 @@ class SingaScheduler: public mesos::Scheduler {
         ReadProtoFromTextFile(job_conf_file_.c_str(), &job_conf_);
     }
     /**
-     * Constructor. It overwrites /singa/singa.conf on HDFS (created a new one if necessary).  
+     * Constructor. It overwrites /singa/singa.conf on HDFS (created a new one if necessary).
      * The file contains zookeeper_host and log_dir values
      * It also parses the JobProto from job_config file
      *
@@ -130,7 +130,7 @@ class SingaScheduler: public mesos::Scheduler {
      * Handle resource offering from Mesos scheduler. It implements the simple/naive
      * scheduler:
      * + For each offer that contains enough CPUs, adds new tasks to the list
-     * + Launch all the tasks when reaching the required number of tasks (nworkers_groups + nserver_groups). 
+     * + Launch all the tasks when reaching the required number of tasks (nworkers_groups + nserver_groups).
      */
     virtual void resourceOffers(SchedulerDriver* driver, const std::vector<mesos::Offer>& offers) {
       // do nothing if the task is already running
@@ -251,22 +251,43 @@ class SingaScheduler: public mesos::Scheduler {
     /**
      * Helper function that initialize TaskInfo with the correct URI and command
      */
-    void prepare_tasks(vector<mesos::TaskInfo> *tasks, string hostname, int job_id, string job_conf) {
-      char path_sys_config[512], path_job_config[512];
-      // path to singa.conf
-      snprintf(path_sys_config, 512, "hdfs://%s%s", namenode_.c_str(), SINGA_CONFIG);
-      snprintf(path_job_config, 512, "hdfs://%s%s", namenode_.c_str(), job_conf.c_str());
+     void prepare_tasks(vector<mesos::TaskInfo> *tasks, string hostname, int job_id, string job_conf) {
+       char path_sys_config[512], path_job_config[512];
+       // path to singa.conf
+       snprintf(path_sys_config, 512, "hdfs://%s%s", namenode_.c_str(), SINGA_CONFIG);
+       snprintf(path_job_config, 512, "hdfs://%s%s", namenode_.c_str(), job_conf.c_str());
 
-      char command[512];
-      snprintf(command, 512, "singa -conf ./job.conf -singa_conf ./singa.conf -singa_job %d -host %s", job_id, hostname.c_str());
+       char command[512];
+       //snprintf(command, 512, "/root/incubator-singa/singa -conf ./job.conf -singa_conf ./singa.conf -singa_job %d -host %s", job_id, hostname.c_str());
+       //snprintf(command, 512, "/root/incubator-singa/singa -conf ./job.conf -singa_conf ./singa.conf -singa_job %d -host %s", job_id, hostname.c_str());
+         // Use Docker to run the task.
+       mesos::ContainerInfo containerInfo;
+       containerInfo.set_type(mesos::ContainerInfo::DOCKER);
 
-      for (int i=0; i < tasks->size(); i++) {
-        mesos::CommandInfo *comm = (tasks->at(i)).mutable_command();
-        comm->add_uris()->set_value(path_sys_config);
-        comm->add_uris()->set_value(path_job_config);
-        comm->set_value(command);
-      }
-    }
+       mesos::ContainerInfo::DockerInfo dockerInfo;
+       dockerInfo.set_image("venkatsatishkatta/test");
+
+       containerInfo.mutable_docker()->CopyFrom(dockerInfo);
+     //  task.mutable_container()->CopyFrom(containerInfo);
+
+       for (int i=0; i < tasks->size(); i++) {
+         mesos::CommandInfo *comm = (tasks->at(i)).mutable_command();
+         comm->add_uris()->set_value(path_sys_config);
+         comm->add_uris()->set_value(path_job_config);
+         //comm->set_value(command);
+         comm->set_shell(false);
+         comm->set_value("/root/incubator-singa/singa");
+         comm->add_arguments("-conf");
+         comm->add_arguments("./job.conf");
+         comm->add_arguments("-singa_conf");
+         comm->add_arguments("./singa.conf");
+         comm->add_arguments("-singa_job");
+         comm->add_arguments(std::to_string(job_id));
+         comm->add_arguments("-host");
+         comm->add_arguments(hostname.c_str());
+         (tasks->at(i)).mutable_container()->CopyFrom(containerInfo);
+       }
+     }
 
     /**
      * Helper function to connect to HDFS
@@ -280,9 +301,9 @@ class SingaScheduler: public mesos::Scheduler {
     }
 
     /**
-     * Helper function to read HDFS file content into a string. 
-     * It assumes the file exists. 
-     * @return NULL if there's error. 
+     * Helper function to read HDFS file content into a string.
+     * It assumes the file exists.
+     * @return NULL if there's error.
      */
     string hdfs_read(hdfsFS hdfs_handle, string filename) {
       hdfsFileInfo* stat = hdfsGetPathInfo(hdfs_handle, filename.c_str());
@@ -301,9 +322,9 @@ class SingaScheduler: public mesos::Scheduler {
     }
 
     /**
-     * Helper function that write content of source_file to filename, overwritting the latter 
-     * if it exists. 
-     * @return 1 if sucessfull, 0 if fail. 
+     * Helper function that write content of source_file to filename, overwritting the latter
+     * if it exists.
+     * @return 1 if sucessfull, 0 if fail.
      */
     int hdfs_overwrite(hdfsFS hdfs_handle, string filename, string source_file) {
       hdfsFile file;
@@ -347,7 +368,7 @@ class SingaScheduler: public mesos::Scheduler {
      * Helper function, check if the offered CPUs satisfies the resource requirements
      * @param ncpus:	number of cpus offer at this host
      * @return true		when ncpus >= (nWorkersPerProcess + nServersPerProcess) if workers and servers are separated
-     *								or when cpus >= max(nWorkersPerProcess, nServersPerProcess) if they are not. 
+     *								or when cpus >= max(nWorkersPerProcess, nServersPerProcess) if they are not.
      */
     bool check_resources(int ncpus) {
       int n1 = job_conf_.cluster().nworkers_per_procs();
@@ -366,7 +387,7 @@ class SingaScheduler: public mesos::Scheduler {
     // temporary map of tasks: <offerID, TaskInfo>
     map<string, vector<mesos::TaskInfo>*> tasks_;
     // temporary map of offerID to slave IP addresses
-    map<string, string> hostnames_; 
+    map<string, string> hostnames_;
     // SINGA job config file
     string job_conf_file_;
     // HDFS namenode
@@ -423,4 +444,3 @@ int main(int argc, char** argv) {
 
   return status == mesos::DRIVER_STOPPED ? 0 : 1;
 }
-

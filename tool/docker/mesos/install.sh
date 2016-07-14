@@ -26,8 +26,9 @@ git clone https://github.com/venkatsatish/mesos.git
 #patch and install mesos
 cd /opt/mesos
 ./bootstrap
+sudo ./bootstrap
 mkdir build; cd build
 ../configure
 make
 sudo make install
-sudo cp ../libsingagpu.so /usr/local/lib/
+sudo cp /root/incubator-singa/libsingagpu.so /usr/local/lib/

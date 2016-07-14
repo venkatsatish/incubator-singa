@@ -74,8 +74,9 @@ const char usage[] = " singa_scheduler <job_conf> [-scheduler_conf global_config
                       " -scheduler_conf: optional, system-wide configuration file\n"
                       " -singa_conf: optional, singa global configuration file\n";
 
-const char SINGA_CONFIG[] = "/singa/singa.conf";
+const char SINGA_CONFIG[] = "../../conf/singa.conf";
 const char DEFAULT_SCHEDULER_CONF[] = "scheduler.conf";
+const char default_path[] = "../../../files";
 class SingaScheduler: public mesos::Scheduler {
  public:
     /**
@@ -88,13 +89,9 @@ class SingaScheduler: public mesos::Scheduler {
      */
     SingaScheduler(string namenode, string job_conf_file, int jc):
       job_conf_file_(job_conf_file), nhosts_(0), namenode_(namenode), is_running_(false), job_counter_(jc), task_counter_(0) {
-        hdfs_handle_ = hdfs_connect(namenode.c_str());
-        if (hdfs_handle_) {
-          if (hdfsExists(hdfs_handle_, SINGA_CONFIG) != 0)
-            LOG(ERROR) << SINGA_CONFIG << " is not found on HDFS. Please use -singa_conf flag to upload the file";
-        } else {
-          LOG(ERROR) << "Failed to connect to HDFS";
-        }
+	char command[512];
+        snprintf(command,512,"cp %s %s",SINGA_CONFIG,default_path);
+        system(command);
         ReadProtoFromTextFile(job_conf_file_.c_str(), &job_conf_);
     }
     /**
@@ -108,10 +105,9 @@ class SingaScheduler: public mesos::Scheduler {
      */
     SingaScheduler(string namenode, string job_conf_file, string singa_conf, int jc)
       : job_conf_file_(job_conf_file), nhosts_(0), namenode_(namenode), is_running_(false), job_counter_(jc), task_counter_(0) {
-        hdfs_handle_ = hdfs_connect(namenode);
-        if (!hdfs_handle_ || !hdfs_overwrite(hdfs_handle_, SINGA_CONFIG, singa_conf))
-          LOG(ERROR) << "Failed to connect to HDFS";
-
+	char command[512];
+	snprintf(command,512,"cp %s %s",singa_conf.c_str(),default_path);
+	system(command);
         ReadProtoFromTextFile(job_conf_file_.c_str(), &job_conf_);
       }
     virtual void registered(SchedulerDriver *driver,
@@ -191,9 +187,8 @@ class SingaScheduler: public mesos::Scheduler {
 
         // write job_conf_file_ to /singa/job_id/job.conf
         char path[512];
-        snprintf(path, 512, "/singa/%d/job.conf", job_counter_);
-        hdfs_overwrite(hdfs_handle_, path, job_conf_file_);
-
+        snprintf(path, 512, "cp %s %s/job.conf", job_conf_file_.c_str(),default_path);
+	system(path);
         // launch tasks
         for (map<string, vector<mesos::TaskInfo>*>::iterator it =
             tasks_.begin(); it != tasks_.end(); ++it) {
@@ -254,95 +249,38 @@ class SingaScheduler: public mesos::Scheduler {
     void prepare_tasks(vector<mesos::TaskInfo> *tasks, string hostname, int job_id, string job_conf) {
       char path_sys_config[512], path_job_config[512];
       // path to singa.conf
-      snprintf(path_sys_config, 512, "hdfs://%s%s", namenode_.c_str(), SINGA_CONFIG);
-      snprintf(path_job_config, 512, "hdfs://%s%s", namenode_.c_str(), job_conf.c_str());
+      snprintf(path_sys_config, 512, "http://%s/singa.conf",namenode_.c_str());
+      snprintf(path_job_config, 512, "http://%s/job.conf",namenode_.c_str());
+	
+	// Use Docker to run the task.
+      mesos::ContainerInfo containerInfo;
+      containerInfo.set_type(mesos::ContainerInfo::DOCKER);
 
-      char command[512];
-      snprintf(command, 512, "singa -conf ./job.conf -singa_conf ./singa.conf -singa_job %d -host %s", job_id, hostname.c_str());
+      mesos::ContainerInfo::DockerInfo dockerInfo;
+      dockerInfo.set_image("venkatsatishkatta/test");
+
+      containerInfo.mutable_docker()->CopyFrom(dockerInfo);
+    //  task.mutable_container()->CopyFrom(containerInfo);
 
       for (int i=0; i < tasks->size(); i++) {
         mesos::CommandInfo *comm = (tasks->at(i)).mutable_command();
         comm->add_uris()->set_value(path_sys_config);
         comm->add_uris()->set_value(path_job_config);
-        comm->set_value(command);
+        comm->set_shell(false);
+	comm->set_value("/root/incubator-singa/singa");
+	comm->add_arguments("-conf");
+	comm->add_arguments("./job.conf");
+	comm->add_arguments("-singa_conf");
+	comm->add_arguments("./singa.conf");
+	comm->add_arguments("-singa_job");
+	comm->add_arguments(std::to_string(job_id));
+	comm->add_arguments("-host");
+	comm->add_arguments(hostname.c_str());
+        (tasks->at(i)).mutable_container()->CopyFrom(containerInfo);
       }
     }
 
-    /**
-     * Helper function to connect to HDFS
-     */
-    hdfsFS hdfs_connect(string namenode) {
-      string path(namenode);
-      int idx = path.find_first_of(":");
-      string host = path.substr(0, idx);
-      int port = atoi(path.substr(idx+1).c_str());
-      return hdfsConnect(host.c_str(), port);
-    }
-
-    /**
-     * Helper function to read HDFS file content into a string. 
-     * It assumes the file exists. 
-     * @return NULL if there's error. 
-     */
-    string hdfs_read(hdfsFS hdfs_handle, string filename) {
-      hdfsFileInfo* stat = hdfsGetPathInfo(hdfs_handle, filename.c_str());
-      int file_size = stat->mSize;
-      string buffer;
-      buffer.resize(file_size);
-
-      hdfsFile file = hdfsOpenFile(hdfs_handle, filename.c_str(), O_RDONLY, 0, 0, 0);
-      int status = hdfsRead(hdfs_handle, file, const_cast<char*>(buffer.c_str()), stat->mSize);
-      hdfsFreeFileInfo(stat, 1);
-      hdfsCloseFile(hdfs_handle, file);
-      if (status != -1)
-        return string(buffer);
-      else
-        return NULL;
-    }
-
-    /**
-     * Helper function that write content of source_file to filename, overwritting the latter 
-     * if it exists. 
-     * @return 1 if sucessfull, 0 if fail. 
-     */
-    int hdfs_overwrite(hdfsFS hdfs_handle, string filename, string source_file) {
-      hdfsFile file;
-      if (hdfsExists(hdfs_handle, filename.c_str()) == 0) {
-        file = hdfsOpenFile(hdfs_handle, filename.c_str(), O_WRONLY, 0, 0, 0);
-      } else {
-        // create directory and file
-        int last_idx = filename.find_last_of("/");
-        string dir = filename.substr(0, last_idx);
-        hdfsCreateDirectory(hdfs_handle, dir.c_str());
-        file = hdfsOpenFile(hdfs_handle, filename.c_str(), O_WRONLY, 0, 0, 0);
-      }
-
-      FILE *fh = fopen(source_file.c_str(), "r");
-      if (!fh) {
-        LOG(ERROR) << "Cannot open " << source_file;
-        return 0;
-      }
-
-      if (file) {
-        fseek(fh, 0, SEEK_END);
-        int len = ftell(fh);
-        rewind(fh);
-        string buf;
-        buf.resize(len);
-        fread(const_cast<char*>(buf.c_str()), len, 1, fh);
-        fclose(fh);
-
-        hdfsWrite(hdfs_handle, file, buf.c_str(), len);
-        hdfsFlush(hdfs_handle, file);
-        hdfsCloseFile(hdfs_handle, file);
-      } else {
-        LOG(ERROR) << "ERROR openng file on HDFS " << filename;
-        return 0;
-      }
-
-      return 1;
-    }
-
+    
     /**
      * Helper function, check if the offered CPUs satisfies the resource requirements
      * @param ncpus:	number of cpus offer at this host
@@ -369,12 +307,9 @@ class SingaScheduler: public mesos::Scheduler {
     map<string, string> hostnames_; 
     // SINGA job config file
     string job_conf_file_;
-    // HDFS namenode
+    // Server address
     string namenode_;
-    // handle to HDFS
-    hdfsFS hdfs_handle_;
 };
-
 int main(int argc, char** argv) {
   FLAGS_logtostderr = 1;
   int status = mesos::DRIVER_RUNNING;
@@ -417,8 +352,8 @@ int main(int argc, char** argv) {
 
   SchedulerDriver *driver = new mesos::MesosSchedulerDriver(scheduler, framework, msg.master().c_str());
   LOG(INFO) << "Starting SINGA framework...";
-  status = driver->run();
-  driver->stop();
+    status = driver->run();
+    driver->stop();
   LOG(INFO) << "Stoping SINGA framework...";
 
   return status == mesos::DRIVER_STOPPED ? 0 : 1;

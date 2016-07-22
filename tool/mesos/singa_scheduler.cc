@@ -76,7 +76,6 @@ const char usage[] = " singa_scheduler <job_conf> [-scheduler_conf global_config
 
 const char SINGA_CONFIG[] = "../../conf/singa.conf";
 const char DEFAULT_SCHEDULER_CONF[] = "scheduler.conf";
-const char default_path[] = "../../../files";
 class SingaScheduler: public mesos::Scheduler {
  public:
     /**
@@ -89,9 +88,7 @@ class SingaScheduler: public mesos::Scheduler {
      */
     SingaScheduler(string namenode, string job_conf_file, int jc):
       job_conf_file_(job_conf_file), nhosts_(0), namenode_(namenode), is_running_(false), job_counter_(jc), task_counter_(0) {
-	char command[512];
-        snprintf(command,512,"cp %s %s",SINGA_CONFIG,default_path);
-        system(command);
+
         ReadProtoFromTextFile(job_conf_file_.c_str(), &job_conf_);
     }
     /**
@@ -105,9 +102,7 @@ class SingaScheduler: public mesos::Scheduler {
      */
     SingaScheduler(string namenode, string job_conf_file, string singa_conf, int jc)
       : job_conf_file_(job_conf_file), nhosts_(0), namenode_(namenode), is_running_(false), job_counter_(jc), task_counter_(0) {
-	char command[512];
-	snprintf(command,512,"cp %s %s",singa_conf.c_str(),default_path);
-	system(command);
+	
         ReadProtoFromTextFile(job_conf_file_.c_str(), &job_conf_);
       }
     virtual void registered(SchedulerDriver *driver,
@@ -185,10 +180,7 @@ class SingaScheduler: public mesos::Scheduler {
           << job_conf_.cluster().nworker_groups()*job_conf_.cluster().nworkers_per_group()
           << " CPUs over " << job_conf_.cluster().nworker_groups() << " hosts. Launching tasks ... ";
 
-        // write job_conf_file_ to /singa/job_id/job.conf
-        char path[512];
-        snprintf(path, 512, "cp %s %s/job.conf", job_conf_file_.c_str(),default_path);
-	system(path);
+
         // launch tasks
         for (map<string, vector<mesos::TaskInfo>*>::iterator it =
             tasks_.begin(); it != tasks_.end(); ++it) {
@@ -249,9 +241,10 @@ class SingaScheduler: public mesos::Scheduler {
     void prepare_tasks(vector<mesos::TaskInfo> *tasks, string hostname, int job_id, string job_conf) {
       char path_sys_config[512], path_job_config[512];
       // path to singa.conf
-      snprintf(path_sys_config, 512, "http://%s/singa.conf",namenode_.c_str());
-      snprintf(path_job_config, 512, "http://%s/job.conf",namenode_.c_str())
-
+      snprintf(path_sys_config, 512, "https://s3.amazonaws.com/skatta/DeepLearning/singa.conf");
+      snprintf(path_job_config, 512, "https://s3.amazonaws.com/skatta/DeepLearning/job.conf");
+      char command[512];
+      snprintf(command,512,"/root/incubator-singa/singa -conf ./job.conf -singa_conf ./singa.conf -singa_job %d -host `hostname -I | cut -d ' ' -f1`",job_id)
 	// Use Docker to run the task.
       mesos::ContainerInfo containerInfo;
       containerInfo.set_type(mesos::ContainerInfo::DOCKER);
